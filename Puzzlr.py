@@ -109,8 +109,6 @@ def serialise_puzzle(puzzle):
     for key in dir(puzzle):
         if not key.startswith("_") and callable(getattr(puzzle, key)):
             function = getattr(puzzle, key)
-            print(key)
-            print(dir(function))
             if function._direction == "op":
                 obj['operations'].append({
                     'operator': function._operator.serialise(),
