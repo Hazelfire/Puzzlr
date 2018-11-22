@@ -22,6 +22,23 @@ class SwapOperation:
             'args': [self.p1, self.p2]
         }
 
+class CompoundOperation:
+    def __init__(self, op1, op2):
+        self.op1 = op1
+        self.op2 = op2
+
+    def apply(self, state):
+        return self.op2.apply(self.op1.apply(state))
+
+    def reverse(self, state):
+        return self.op2.reverse(self.op1.reverse(state))
+
+    def serialise(self):
+        return {
+            'name': 'CompoundOperation',
+            'args': [self.op1.serialise(), self.op2.serialise()],
+        }
+
 
 class AddOperation:
     def __init__(self, p1, p2):
@@ -131,6 +148,24 @@ def add_single_operation(puzzle, operation, name, direction):
 
     setattr(puzzle, name, types.MethodType(op, self.puzzle))
 
+def deserialise_operation(given_operation):
+    operations = [
+        SwapOperation,
+        AddOperation,
+        SubOperation,
+        AddConstOperation,
+        SubConstOperation,
+        CompoundOperation,
+    ]
+    args = given_operation['args']
+    if given_operation['name'] == "CompoundOperation":
+        args = [deserialise_operation(x) for x in args]
+
+    for operation in operations:
+        if operation.__name__ == given_operation['name']:
+            return operation(*args)
+
+
 def deserialise_puzzle(obj):
     operations = [
         SwapOperation,
@@ -138,15 +173,16 @@ def deserialise_puzzle(obj):
         SubOperation,
         AddConstOperation,
         SubConstOperation,
+        CompoundOperation,
     ]
 
     factory = PuzzleFactory()
     for included_operation in obj['operations']:
         for operation in operations:
             if operation.__name__ == included_operation['operator']['name']:
-                factory.add_operation(operation(*included_operation['operator']['args']), *included_operation['names'])
+                factory.add_operation(deserialise_operation(included_operation['operator']), *included_operation['names'])
 
-    puzzle = factory.build();
+    puzzle = factory.build()
     puzzle.state = obj['state']
     return puzzle
 
